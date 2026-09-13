@@ -1,59 +1,208 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Retail Store Order & Inventory Mini-System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A high-performance, race-condition-safe Laravel 12 application built for retail counter operations. Manages product catalogs, customer registries, point-of-sale (POS) order processing, low-stock alerts, and queued confirmation notifications.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Key Features
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **Modern UI & Typography**: Styled with Bootstrap 5 and Google Font **Roboto** (`font-family: 'Roboto', sans-serif;`) loaded via CDN.
+- **Currency**: Configured for Indian Rupee (**INR `₹`**) formatting across all UI views, receipts, API resources, and datatables.
+- **UUID Identifiers**: All database models (`Product`, `Customer`, `Order`, `OrderItem`) use 36-character UUID primary and foreign keys (`HasUuids`).
+- **Race-Condition Safe Stock Engine**: Concurrency safety using Database Transactions + Pessimistic Locking (`lockForUpdate()`) and pre-sorted lock keys to prevent deadlocks and overselling under parallel counter checkout requests.
+- **Product Management (CRUD)**: Web dashboard with Yajra DataTables server-side pagination, search, sorting, and Bootstrap modal dialogs for creating and editing products.
+- **Customer Management (CRUD)**: Web registry featuring Yajra DataTables, modal creation/editing, order count badges, and customer purchase history modal.
+- **Point of Sale (POS) Counter UI**: Interactive counter interface featuring **Select2** searchable customer dropdown, real-time cart calculations (subtotal, line tax, grand total in `₹`), live product search, stock validation, and printable receipt modal.
+- **Orders Log & Invoice Viewer**: Comprehensive order ledger powered by Yajra DataTables server-side processing with click-to-view detailed invoice popups.
+- **API List & Interactive Postman Tester Page**: Built-in interactive workspace ([`/api-list`](http://localhost:8000/api-list)) listing all API V1 endpoints with live `Send Request` testing capabilities, JSON payload editor, and HTTP response inspector.
+- **API Versioning (V1)**: Reorganized API controllers under `App\Http\Controllers\Api\V1` namespace and versioned routes under `/api/v1/<route>`.
+- **Standardized API Helper Functions**: Utilizes global `sendResponse()` and `sendError()` helpers ([`app/Helpers/helpers.php`](app/Helpers/helpers.php)) for consistent API JSON structures (`status`, `message`, `data`/`errors`).
+- **Low Stock Alerts API**: Dedicated query endpoint (`/api/v1/products/low-stock`) returning products at or below threshold.
+- **Async Queued Notifications**: `SendOrderConfirmationEmail` job queued via database driver logging formatted receipt output to `storage/logs/laravel.log`.
+- **100% Test Suite Coverage**: 18 automated PHPUnit feature & unit tests (52 assertions) verifying order placement, insufficient stock failures, concurrent race-condition safety, low-stock threshold queries, and CRUD API endpoints.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Architectural Breakdown
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+```
+app/
+├── Helpers/
+│   └── helpers.php                         # Global API response helpers (sendResponse, sendError)
+├── Http/
+│   ├── Controllers/
+│   │   ├── Api/
+│   │   │   └── V1/                         # Version 1 API Controllers
+│   │   │       ├── ProductController.php   # Product API V1 (CRUD + Low stock endpoint)
+│   │   │       ├── CustomerController.php  # Customer API V1 (CRUD + Order history endpoint)
+│   │   │       └── OrderController.php     # Order API V1 (Store + Index + Show)
+│   │   └── Web/
+│   │       ├── PosController.php           # POS Counter interface
+│   │       ├── ProductWebController.php    # Product CRUD web view & DataTables API
+│   │       ├── CustomerWebController.php   # Customer CRUD web view & DataTables API
+│   │       ├── OrderWebController.php      # Orders log web view & DataTables API
+│   │       └── ApiListController.php       # Interactive API List tester page
+│   ├── Requests/                         # Strict FormRequest validation classes
+│   └── Resources/                        # Eloquent API Resources (INR currency formatting)
+├── Services/
+│   ├── OrderService.php                   # Core business logic with lockForUpdate() & stock deduction
+│   ├── ProductService.php                 # Inventory queries & CRUD logic
+│   └── CustomerService.php                # Customer management service
+├── Jobs/
+│   └── SendOrderConfirmationEmail.php      # Queued notification job
+├── Models/
+│   ├── Product.php                        # Uses HasUuids & SoftDeletes
+│   ├── Customer.php                       # Uses HasUuids & SoftDeletes
+│   ├── Order.php                          # Uses HasUuids
+│   └── OrderItem.php                      # Uses HasUuids & stores price snapshots
+└── Exceptions/
+    └── InsufficientStockException.php      # Custom stock validation exception
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## Technical Design Decisions & Assumptions
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+1. **UUID Keys**: UUIDs (`HasUuids`) were selected over auto-incrementing integer IDs to ensure distributed system compatibility, secure non-sequential order/customer identifiers, and API safety.
+2. **Pessimistic Locking (`lockForUpdate()`)**: High-concurrency retail systems risk stock overselling when two requests attempt to order the last item simultaneously. Wrapping the check and deduction step inside `DB::transaction()` with `lockForUpdate()` guarantees serial access per product row.
+3. **Deadlock Prevention**: Before acquiring row locks in `OrderService`, product IDs in the order request are sorted deterministically.
+4. **Historical Data Snapshots**: `order_items` stores copies of `product_name`, `product_code`, `unit_price`, and `tax_percentage` at the time of purchase. Subsequent changes to product pricing or catalog updates do not alter past order records.
+5. **Server-Side DataTables**: All record lists (Products, Customers, Orders Log) leverage Yajra DataTables server-side processing to handle large datasets efficiently.
 
-### Premium Partners
+---
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Quick Setup Instructions
 
-## Contributing
+### Prerequisites
+- PHP >= 8.2
+- Composer
+- MySQL / MariaDB (XAMPP default)
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+> **Note**: Frontend assets (Bootstrap 5, FontAwesome 6, jQuery, Select2, DataTables) are delivered via CDN. No Node.js or NPM build step is required.
 
-## Code of Conduct
+### Step-by-Step Installation
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+1. **Clone & Install Dependencies**:
+   ```bash
+   git clone <repo-url> inventory-system
+   cd inventory-system
+   composer install
+   ```
 
-## Security Vulnerabilities
+2. **Environment Configuration**:
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+   *The `.env.example` file is synced with MySQL credentials (`DB_DATABASE=inventory_mini_system`, `DB_USERNAME=root`, `DB_PASSWORD=root`).*
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+3. **Run Migrations & Seed Sample Data**:
+   ```bash
+   php artisan migrate:fresh --seed
+   ```
 
-## License
+4. **Serve Application & Queue Worker**:
+   In one terminal:
+   ```bash
+   php artisan serve
+   ```
+   In a second terminal (for async queued email jobs):
+   ```bash
+   php artisan queue:work
+   ```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+5. **Access Application**:
+   - **POS Counter**: [http://localhost:8000](http://localhost:8000)
+   - **Products Catalog**: [http://localhost:8000/products](http://localhost:8000/products)
+   - **Customers Registry**: [http://localhost:8000/customers](http://localhost:8000/customers)
+   - **Orders Log**: [http://localhost:8000/orders](http://localhost:8000/orders)
+   - **API List & Postman Tester**: [http://localhost:8000/api-list](http://localhost:8000/api-list)
+
+---
+
+## API V1 Documentation Quick Reference
+
+All API routes are prefixed with `/api/v1/`:
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/v1/orders` | Create an order & deduct stock |
+| `GET` | `/api/v1/orders/{id}` | View order details |
+| `GET` | `/api/v1/customers/orders?email={email}` | Fetch customer order history by email |
+| `GET` | `/api/v1/products/low-stock?threshold=5` | Get products below low-stock threshold |
+| `GET` | `/api/v1/products` | List all products (supports `?search=...`) |
+| `POST` | `/api/v1/products` | Create product |
+| `PUT` | `/api/v1/products/{id}` | Update product |
+| `DELETE` | `/api/v1/products/{id}` | Delete product |
+| `GET` | `/api/v1/customers` | List all customers |
+| `POST` | `/api/v1/customers` | Create customer |
+| `PUT` | `/api/v1/customers/{id}` | Update customer |
+| `DELETE` | `/api/v1/customers/{id}` | Delete customer |
+
+---
+
+## Running Automated Tests
+
+Run the full PHPUnit feature test suite:
+```bash
+php artisan test
+```
+
+Test Suite Execution Result:
+```
+PASS  Tests\Unit\ExampleTest
+✓ that true is true
+
+PASS  Tests\Feature\ConcurrentStockTest
+✓ stock deduction is race condition safe
+
+PASS  Tests\Feature\CustomerCrudTest
+✓ can list customers via api
+✓ can create customer via api
+✓ can update customer via api
+✓ can delete customer via api
+
+PASS  Tests\Feature\CustomerHistoryTest
+✓ can fetch customer order history by email
+✓ customer order history returns empty when email has no orders
+
+PASS  Tests\Feature\ExampleTest
+✓ the application returns a successful response
+
+PASS  Tests\Feature\LowStockTest
+✓ low stock endpoint returns products at or below threshold
+✓ low stock endpoint accepts custom threshold param
+
+PASS  Tests\Feature\OrderTest
+✓ order can be created via api
+✓ order creation fails when stock is insufficient
+✓ order creates snapshot details in order items
+
+PASS  Tests\Feature\ProductCrudTest
+✓ can list products via api
+✓ can create product via api
+✓ can update product via api
+✓ can delete product via api
+
+Tests:    18 passed (52 assertions)
+```
+
+---
+
+## Documentation, Prompt History & Screenshots Index
+
+All task specifications, master design plans, user prompt histories, session screenshots, and step-by-step implementation logs are stored in the [`docs/`](docs/) directory:
+
+- **Original Task Specification**: [`docs/Laravel_Developer_Mini_Task.md`](docs/Laravel_Developer_Mini_Task.md)
+- **Master Implementation Plan**: [`docs/implementation_plan.md`](docs/implementation_plan.md)
+- **Complete User Prompt & Chat History**: [`docs/user_prompts_history.md`](docs/user_prompts_history.md)
+- **Session Screenshots Directory**: [`docs/images/`](docs/images/) *(Save your session screenshots here as `prompt_image_1.png`)* and so on
+
+### Implementation Tracker Logs (`docs/implementation-tracker/`)
+1. Log #01 - Initial Core System Implementation: [`docs/implementation-tracker/01_initial_implementation_tracker.md`](docs/implementation-tracker/01_initial_implementation_tracker.md)
+2. Log #02 - Customer & Product CRUD UI Modals & API List Tester Page: [`docs/implementation-tracker/02_corrections_and_api_list_page.md`](docs/implementation-tracker/02_corrections_and_api_list_page.md)
+3. Log #03 - Web & API Route Naming Isolation Fix: [`docs/implementation-tracker/03_route_name_isolation_fix.md`](docs/implementation-tracker/03_route_name_isolation_fix.md)
+4. Log #04 - Select2 & Yajra DataTables Integration: [`docs/implementation-tracker/04_select2_and_yajra_datatables_integration.md`](docs/implementation-tracker/04_select2_and_yajra_datatables_integration.md)
+5. Log #05 - Currency Symbol Update to INR (`₹`): [`docs/implementation-tracker/05_currency_symbol_update_to_inr.md`](docs/implementation-tracker/05_currency_symbol_update_to_inr.md)
+6. Log #06 - API Helper Function Refactoring (`sendResponse` / `sendError`): [`docs/implementation-tracker/06_api_helper_function_refactoring.md`](docs/implementation-tracker/06_api_helper_function_refactoring.md)
+7. Log #07 - API Controller & Route Versioning (`api/v1/...`): [`docs/implementation-tracker/07_api_v1_versioning.md`](docs/implementation-tracker/07_api_v1_versioning.md)
